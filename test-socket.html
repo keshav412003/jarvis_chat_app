@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Socket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            background: #111;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        #log {
+            white-space: pre-wrap;
+        }
+
+        .success {
+            color: #0f0;
+        }
+
+        .error {
+            color: #f00;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Socket Connectivity Test</h2>
+    <div id="log">Initializing...</div>
+
+    <script>
+        const log = (msg, type = '') => {
+            const el = document.getElementById('log');
+            el.innerHTML += `\n<span class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</span>`;
+            console.log(msg);
+        };
+
+        const socket = io("http://localhost:4000", {
+            transports: ["websocket", "polling"]
+        });
+
+        const CHAT_ID = "browser-test-room";
+
+        socket.on("connect", () => {
+            log("Connected to Socket Server", "success");
+            socket.emit("join_room", CHAT_ID);
+            log(`Joined room: ${CHAT_ID}`);
+
+            // Simulate the internal notify trigger
+            setTimeout(async () => {
+                log("Attempting to trigger internal notify endpoint...");
+                try {
+                    const res = await fetch("http://localhost:4000/internal/notify", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "x-internal-secret": "super-secret-internal-key"
+                        },
+                        body: JSON.stringify({
+                            event: "receive_message",
+                            chatId: CHAT_ID,
+                            payload: {
+                                _id: "msg-" + Date.now(),
+                                content: "BROWSER TEST MESSAGE",
+                                sender: { _id: "user-browser", name: "Browser Tester" },
+                                chatId: CHAT_ID,
+                                createdAt: new Date().toISOString()
+                            }
+                        })
+                    });
+                    log(`Notify Request Sent. Status: ${res.status}`);
+                } catch (e) {
+                    log(`Notify Failed: ${e.message}`, "error");
+                }
+            }, 1000);
+        });
+
+        socket.on("receive_message", (data) => {
+            log(`RECEIVED MESSAGE: ${JSON.stringify(data)}`, "success");
+            if (data.content === "BROWSER TEST MESSAGE") {
+                log("TEST PASSED: Full loop verified.", "success");
+                document.body.style.backgroundColor = "#002200";
+            }
+        });
+
+        socket.on("connect_error", (err) => {
+            log(`Connection Error: ${err.message}`, "error");
+        });
+
+        socket.on("disconnect", () => {
+            log("Disconnected", "error");
+        });
+    </script>
+</body>
+
+</html>
