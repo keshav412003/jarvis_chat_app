@@ -38,17 +38,6 @@ export function ChatHeader({ chatDetails, user, socket, onShowInfo }) {
                     <h2 className="text-lg font-bold text-white tracking-wide leading-tight">
                         {chatDetails?.isGroup ? chatDetails.groupName : otherParticipant?.name || 'Loading...'}
                     </h2>
-                    <div className="flex items-center gap-2">
-                        <p className="text-xs text-gray-400">
-                            {chatDetails?.isGroup
-                                ? `${chatDetails.participants?.length || 0} Operatives`
-                                : (otherParticipant?.isOnline ? 'Online' : 'Offline')}
-                        </p>
-                        <div
-                            className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}
-                            title={socket?.connected ? 'Secure Link Established' : 'Link Offline'}
-                        />
-                    </div>
                 </div>
             </div>
             <div className="flex gap-2 text-white">

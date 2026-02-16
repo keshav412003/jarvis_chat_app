@@ -56,12 +56,7 @@ const MessageList = memo(({ messages, user, typingUsers, messagesEndRef, onScrol
                     <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
-            {messages.map((msg, idx) => {
-                const isMe = msg.sender._id === user?._id || msg.sender === user?._id;
-                // Use combination of _id and index to ensure uniqueness
-                const uniqueKey = msg._id ? `${msg._id}-${idx}` : `msg-${idx}`;
-                return <MessageItem key={uniqueKey} msg={msg} isMe={isMe} />;
-            })}
+           
             <div ref={messagesEndRef} />
             {typingUsers.size > 0 && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-cyan-500/50 text-xs font-mono ml-4">
@@ -73,6 +68,14 @@ const MessageList = memo(({ messages, user, typingUsers, messagesEndRef, onScrol
                     <span>Agent is typing...</span>
                 </motion.div>
             )}
+
+            {messages.map((msg, idx) => {
+                const isMe = msg.sender._id === user?._id || msg.sender === user?._id;
+                // Use combination of _id and index to ensure uniqueness
+                const uniqueKey = msg._id ? `${msg._id}-${idx}` : `msg-${idx}`;
+                return <MessageItem key={uniqueKey} msg={msg} isMe={isMe} />;
+            })}
+            
         </div>
     );
 });
