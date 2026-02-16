@@ -26,7 +26,7 @@ export function SocketProvider({ children }) {
         }
 
         initializingRef.current = true;
-        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000");
 
         console.log("[Socket] Initializing connection to:", socketUrl);
 
