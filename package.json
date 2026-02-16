@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "socket": "node socket-server.js",
-    "dev:all": "concurrently \"npm run socket\" \"npm run dev\"",
     "build": "next build",
-    "start": "node server.js"
+    "start": "next start"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
