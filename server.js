@@ -1,18 +1,20 @@
+const { createServer } = require('http');
+const { parse } = require('url');
 const next = require('next');
-const http = require('http');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = '0.0.0.0';
 const port = process.env.PORT || 3000;
+const hostname = '0.0.0.0';
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = http.createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     try {
-      await handle(req, res);
+      const parsedUrl = parse(req.url, true);
+      await handle(req, res, parsedUrl);
     } catch (err) {
       console.error('Error occurred handling', req.url, err);
       res.statusCode = 500;
@@ -21,7 +23,7 @@ app.prepare().then(() => {
   });
 
   // Socket.io setup
-  const CLIENT_URL = process.env.CLIENT_URL || `http://localhost:${port}`;
+  const CLIENT_URL = process.env.CLIENT_URL || '*';
   
   const io = new Server(server, {
     cors: {
@@ -32,11 +34,6 @@ app.prepare().then(() => {
     transports: ["websocket", "polling"],
     pingTimeout: 60000,
     pingInterval: 25000,
-  });
-
-  // Health Check Endpoint
-  io.engine.on('connection', (socket) => {
-    console.log(`[Socket.IO] ✅ User Connected: ${socket.id}`);
   });
 
   // Track active rooms per socket for cleanup
@@ -63,14 +60,9 @@ app.prepare().then(() => {
     socket.on("join_room", (roomId) => {
       const roomStr = String(roomId);
       socket.join(roomStr);
-
-      // Track room
       const rooms = socketRooms.get(socket.id);
       if (rooms) rooms.add(roomStr);
-
       console.log(`[Socket.IO] 🚪 User ${socket.id} joined room: ${roomStr}`);
-
-      // Optional: Notify others in room
       socket.to(roomStr).emit("user_joined_room", { socketId: socket.id, roomId: roomStr });
     });
 
@@ -78,14 +70,9 @@ app.prepare().then(() => {
     socket.on("leave_room", (roomId) => {
       const roomStr = String(roomId);
       socket.leave(roomStr);
-
-      // Track room
       const rooms = socketRooms.get(socket.id);
       if (rooms) rooms.delete(roomStr);
-
       console.log(`[Socket.IO] 🚪 User ${socket.id} left room: ${roomStr}`);
-
-      // Optional: Notify others in room
       socket.to(roomStr).emit("user_left_room", { socketId: socket.id, roomId: roomStr });
     });
 
@@ -102,7 +89,7 @@ app.prepare().then(() => {
       socket.to(roomStr).emit("group:stop_typing", { chatId: roomStr, userId: socket.id });
     });
 
-    // Send Message (for testing/legacy, prefer internal notify)
+    // Send Message
     socket.on("send_message", (data) => {
       const chatRoom = String(data.chatId);
       console.log(`[Socket.IO] 💬 Broadcasting message to room ${chatRoom}`);
@@ -110,7 +97,7 @@ app.prepare().then(() => {
     });
   });
 
-  // Internal System Notification Endpoint (Secured)
+  // Internal System Notification Endpoint
   const express = require('express');
   const internalApp = express();
   internalApp.use(express.json());
@@ -133,7 +120,6 @@ app.prepare().then(() => {
 
     console.log(`[Socket.IO] 📢 INTERNAL NOTIFY: Event="${event}" Room="${chatId}"`);
 
-    // Handle array of rooms (for user_<id> broadcast)
     const rooms = Array.isArray(chatId) ? chatId : [chatId];
 
     rooms.forEach(room => {
@@ -142,7 +128,6 @@ app.prepare().then(() => {
       io.to(roomStr).emit(event, payload);
     });
 
-    // Special handling for group deletion
     if (event === 'group:deleted') {
       rooms.forEach(room => {
         io.in(String(room)).socketsLeave(String(room));
@@ -153,7 +138,7 @@ app.prepare().then(() => {
     return res.json({ success: true, roomsNotified: rooms.length });
   });
 
-  // Mount internal app on the same server
+  // Mount internal app
   server.on('request', (req, res, next) => {
     if (req.url.startsWith('/internal/')) {
       internalApp(req, res, next);
